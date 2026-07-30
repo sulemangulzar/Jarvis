@@ -1,5 +1,6 @@
 from functools import lru_cache
 from pathlib import Path
+from typing import Literal
 
 from cryptography.fernet import Fernet
 from pydantic import Field, computed_field, model_validator
@@ -21,6 +22,7 @@ class Settings(BaseSettings):
     # separately from the encrypted server-side MSAL cache.
     session_max_age: int = 60 * 60 * 24 * 7
     session_https_only: bool = False
+    session_same_site: Literal["lax", "strict", "none"] = "lax"
     token_encryption_key: str = Field(min_length=44)
 
     # The key stays on the backend. It is never sent to React.
@@ -45,6 +47,8 @@ class Settings(BaseSettings):
     def validate_production_cookie(self) -> "Settings":
         if self.app_env.lower() == "production" and not self.session_https_only:
             raise ValueError("SESSION_HTTPS_ONLY must be true in production")
+        if self.session_same_site == "none" and not self.session_https_only:
+            raise ValueError("SESSION_HTTPS_ONLY must be true when SESSION_SAME_SITE is none")
         if self.session_max_age <= 0:
             raise ValueError("SESSION_MAX_AGE must be greater than zero")
         try:

@@ -353,6 +353,7 @@ Recommended first deployment:
 - Set all secrets in the hosting provider’s environment settings.
 - Enable HTTPS.
 - Set `SESSION_HTTPS_ONLY=true`.
+- Set `SESSION_SAME_SITE=none` when frontend and backend use separate HTTPS domains, such as two Vercel projects.
 - Set `FRONTEND_URL` to the exact public frontend URL.
 - Set `MICROSOFT_REDIRECT_URI` to the exact public backend callback URL.
 - Register that callback URL in Microsoft Entra.
@@ -364,7 +365,8 @@ Example production values:
 APP_ENV=production
 FRONTEND_URL=https://app.example.com
 MICROSOFT_REDIRECT_URI=https://api.example.com/auth/microsoft/callback
-SESSION_HTTPS_ONLY=true
+SESSION_HTTPS_ONLY=false
+SESSION_SAME_SITE=lax
 SESSION_MAX_AGE=604800
 ```
 

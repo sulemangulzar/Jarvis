@@ -60,7 +60,7 @@ def create_app() -> FastAPI:
         secret_key=settings.session_secret,
         session_cookie=settings.session_cookie_name,
         max_age=settings.session_max_age,
-        same_site="lax",
+        same_site=settings.session_same_site,
         https_only=settings.session_https_only,
     )
 
