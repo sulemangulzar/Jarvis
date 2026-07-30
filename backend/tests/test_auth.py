@@ -42,9 +42,10 @@ class FakeMsalClient:
         }
 
     def initiate_auth_code_flow(self, **kwargs):
+        self.state = kwargs["state"]
         return {
             "auth_uri": "https://login.microsoftonline.com/test-login",
-            "state": kwargs["state"],
+            "state": self.state,
         }
 
     def acquire_token_by_auth_code_flow(self, flow, response_data):
@@ -103,10 +104,10 @@ def test_callback_creates_session_user_and_status(monkeypatch):
     monkeypatch.setattr(auth, "get_microsoft_profile", fake_graph_profile)
 
     with make_client() as client:
-        start_login(client, monkeypatch)
+        fake_msal = start_login(client, monkeypatch)
         response = client.post(
             "/auth/microsoft/callback",
-            data={"code": "fake-code", "state": "fake-state"},
+            data={"code": "fake-code", "state": fake_msal.state},
             follow_redirects=False,
         )
         assert response.status_code == 303
@@ -141,10 +142,10 @@ def test_logout_clears_session(monkeypatch):
     monkeypatch.setattr(auth, "get_microsoft_profile", fake_graph_profile)
 
     with make_client() as client:
-        start_login(client, monkeypatch)
+        fake_msal = start_login(client, monkeypatch)
         client.post(
             "/auth/microsoft/callback",
-            data={"code": "fake-code", "state": "fake-state"},
+            data={"code": "fake-code", "state": fake_msal.state},
             follow_redirects=False,
         )
         logout = client.post("/auth/logout")
@@ -168,10 +169,10 @@ def test_callback_rejects_failed_msal_result(monkeypatch):
     failed_result = {"error": "invalid_grant"}
 
     with make_client() as client:
-        start_login(client, monkeypatch, token_result=failed_result)
+        fake_msal = start_login(client, monkeypatch, token_result=failed_result)
         response = client.post(
             "/auth/microsoft/callback",
-            data={"code": "bad-code", "state": "fake-state"},
+            data={"code": "bad-code", "state": fake_msal.state},
             follow_redirects=False,
         )
 
@@ -188,10 +189,10 @@ def test_callback_handles_graph_failure(monkeypatch):
     monkeypatch.setattr(auth, "get_microsoft_profile", failed_graph_profile)
 
     with make_client() as client:
-        start_login(client, monkeypatch)
+        fake_msal = start_login(client, monkeypatch)
         response = client.post(
             "/auth/microsoft/callback",
-            data={"code": "fake-code", "state": "fake-state"},
+            data={"code": "fake-code", "state": fake_msal.state},
             follow_redirects=False,
         )
 

@@ -15,6 +15,7 @@ from app.api.v1.chat import router as chat_router
 from app.core.config import get_settings
 from app.db import Base, engine
 import app.models.conversation  # noqa: F401
+import app.models.oauth_flow  # noqa: F401
 import app.models.token_cache  # noqa: F401
 import app.models.user  # noqa: F401
 

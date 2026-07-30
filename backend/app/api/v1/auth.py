@@ -16,6 +16,7 @@ from app.services.microsoft_auth import (
     build_msal_app,
     get_microsoft_profile,
 )
+from app.services.oauth_flows import pop_oauth_flow, save_oauth_flow
 from app.services.token_cache import delete_token_cache, save_token_cache
 from app.services.users import save_microsoft_user
 
@@ -29,7 +30,7 @@ session_router = APIRouter(
 )
 
 
-def start_login(request: Request, settings: Settings):
+def start_login(request: Request, settings: Settings, db: Session):
     """Create the Microsoft authorization request and redirect the browser."""
     try:
         msal_app = build_msal_app(settings)
@@ -53,7 +54,8 @@ def start_login(request: Request, settings: Settings):
             detail="Microsoft could not start authentication.",
         )
 
-    request.session["microsoft_auth_flow"] = flow
+    save_oauth_flow(db, flow["state"], flow, settings)
+    request.session["oauth_state"] = flow["state"]
     return RedirectResponse(url=flow["auth_uri"], status_code=302)
 
 
@@ -61,8 +63,9 @@ def start_login(request: Request, settings: Settings):
 def login(
     request: Request,
     settings: Settings = Depends(get_settings),
+    db: Session = Depends(get_db),
 ):
-    return start_login(request, settings)
+    return start_login(request, settings, db)
 
 
 async def complete_login(
@@ -71,17 +74,25 @@ async def complete_login(
     db: Session,
 ):
     """Exchange Microsoft's response, call Graph, and create the local user."""
-    flow = request.session.pop("microsoft_auth_flow", None)
-    if flow is None:
+    if request.method == "POST":
+        response_data = dict(await request.form())
+    else:
+        response_data = dict(request.query_params)
+
+    session_state = request.session.pop("oauth_state", None)
+    response_state = response_data.get("state")
+    if not session_state or session_state != response_state:
         raise HTTPException(
             status_code=400,
             detail="Microsoft login session expired. Start login again.",
         )
 
-    if request.method == "POST":
-        response_data = dict(await request.form())
-    else:
-        response_data = dict(request.query_params)
+    flow = pop_oauth_flow(db, session_state, settings)
+    if flow is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Microsoft login session expired. Start login again.",
+        )
 
     try:
         msal_app = build_msal_app(settings)
