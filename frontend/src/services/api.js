@@ -1,5 +1,5 @@
 const API_BASE_URL = (
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:8000"
+  import.meta.env.VITE_API_BASE_URL || "/api"
 ).replace(/\/$/, "");
 
 async function fetchWithTimeout(url, options = {}, timeoutMs = 8000) {

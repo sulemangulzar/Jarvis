@@ -353,10 +353,11 @@ Recommended first deployment:
 - Set all secrets in the hosting provider’s environment settings.
 - Enable HTTPS.
 - Set `SESSION_HTTPS_ONLY=true`.
-- Set `SESSION_SAME_SITE=none` when frontend and backend use separate HTTPS domains, such as two Vercel projects.
+- Use the frontend same-origin `/api` rewrite for Vercel deployments.
 - Set `FRONTEND_URL` to the exact public frontend URL.
-- Set `MICROSOFT_REDIRECT_URI` to the exact public backend callback URL.
-- Register that callback URL in Microsoft Entra.
+- Set `MICROSOFT_REDIRECT_URI` to `https://your-frontend-domain.com/api/auth/microsoft/callback`.
+- Register that frontend `/api` callback URL exactly in Microsoft Entra.
+- Set `SESSION_SAME_SITE=none` and `SESSION_HTTPS_ONLY=true` for cross-domain fallback deployments.
 - Confirm `/health/live` and `/health/ready` after deployment.
 
 Example production values:
@@ -364,8 +365,8 @@ Example production values:
 ```env
 APP_ENV=production
 FRONTEND_URL=https://app.example.com
-MICROSOFT_REDIRECT_URI=https://api.example.com/auth/microsoft/callback
-SESSION_HTTPS_ONLY=false
+MICROSOFT_REDIRECT_URI=https://app.example.com/api/auth/microsoft/callback
+SESSION_HTTPS_ONLY=true
 SESSION_SAME_SITE=lax
 SESSION_MAX_AGE=604800
 ```
