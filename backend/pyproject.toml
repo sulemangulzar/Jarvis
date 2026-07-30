@@ -5,9 +5,12 @@ description = "Jarvis FastAPI backend"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "cryptography==49.0.0",
     "fastapi[all]==0.140.13",
     "httpx==0.28.1",
     "itsdangerous==2.2.0",
+    "langchain-openai>=1.4.1",
+    "langgraph>=1.2.10",
     "msal==1.37.0",
     "psycopg[binary]==3.3.4",
     "pydantic-settings==2.14.2",

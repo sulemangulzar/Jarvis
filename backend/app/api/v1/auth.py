@@ -1,6 +1,8 @@
 import secrets
+from typing import cast
 
 import httpx
+import msal
 import requests
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import RedirectResponse
@@ -14,6 +16,7 @@ from app.services.microsoft_auth import (
     build_msal_app,
     get_microsoft_profile,
 )
+from app.services.token_cache import delete_token_cache, save_token_cache
 from app.services.users import save_microsoft_user
 
 router = APIRouter(
@@ -34,7 +37,9 @@ def start_login(request: Request, settings: Settings):
             scopes=GRAPH_SCOPES,
             redirect_uri=settings.microsoft_redirect_uri,
             state=secrets.token_urlsafe(32),
-            response_mode="form_post",
+            # Query callback keeps the SameSite=Lax session cookie available
+            # during local development. State is still validated by MSAL.
+            response_mode="query",
         )
     except requests.exceptions.RequestException as error:
         raise HTTPException(
@@ -120,6 +125,12 @@ async def complete_login(
         email=email,
         name=profile.get("displayName"),
     )
+    save_token_cache(
+        db,
+        user.id,
+        cast(msal.SerializableTokenCache, msal_app.token_cache),
+        settings,
+    )
     request.session["user_id"] = user.id
 
     # The session cookie is the only application credential sent back to the
@@ -189,6 +200,9 @@ def current_user(request: Request, db: Session = Depends(get_db)):
 
 
 @session_router.post("/logout")
-def logout(request: Request):
+def logout(request: Request, db: Session = Depends(get_db)):
+    user_id = request.session.get("user_id")
+    if user_id is not None:
+        delete_token_cache(db, user_id)
     request.session.clear()
     return {"success": True}

@@ -3,14 +3,19 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import ValidationError
 from fastapi.responses import HTMLResponse, JSONResponse
 from sqlalchemy import text
 from starlette.middleware.sessions import SessionMiddleware
 
 from app.api.v1.auth import router as microsoft_auth_router
 from app.api.v1.auth import session_router
+from app.api.v1.graph import router as graph_router
+from app.api.v1.chat import router as chat_router
 from app.core.config import get_settings
 from app.db import Base, engine
+import app.models.conversation  # noqa: F401
+import app.models.token_cache  # noqa: F401
 import app.models.user  # noqa: F401
 
 
@@ -18,9 +23,14 @@ def create_app() -> FastAPI:
     """Create the application and validate configuration before serving traffic."""
     try:
         settings = get_settings()
-    except Exception as error:
+    except ValidationError as error:
+        invalid_fields = sorted(
+            {".".join(str(part) for part in item["loc"])
+             for item in error.errors()}
+        )
+        fields = ", ".join(invalid_fields)
         raise RuntimeError(
-            "Invalid backend configuration. Check the required values in .env."
+            f"Invalid backend configuration. Fix these settings in .env: {fields}"
         ) from error
 
     @asynccontextmanager
@@ -56,6 +66,8 @@ def create_app() -> FastAPI:
 
     app.include_router(microsoft_auth_router)
     app.include_router(session_router)
+    app.include_router(graph_router)
+    app.include_router(chat_router)
 
     @app.get("/health/live", tags=["System"])
     def liveness_check():
@@ -97,4 +109,4 @@ def create_app() -> FastAPI:
     return app
 
 
-app: FastAPI = create_app()  # type: ignore[assignment]
+app = create_app()
