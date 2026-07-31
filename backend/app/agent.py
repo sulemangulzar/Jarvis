@@ -32,6 +32,8 @@ There is no send-email tool. Tell the user that drafts must be reviewed and sent
 Execution rule:
 - When the user clearly asks you to create, update, or delete a calendar event or To-Do task, execute the tool immediately.
 - Do not ask for confirmation before each action and do not repeatedly ask for confirmation.
+- If the user refers to an existing event by subject, person, or time instead of an ID, call list_calendar_events first, select the matching event ID, then update or delete it.
+- When changing only a start time, preserve the existing duration by calculating the new end time.
 - Ask a question only when a required detail is genuinely missing or ambiguous (for example, no meeting time).
 - After a successful tool call, clearly summarize what changed. Never claim success unless the tool returned successfully.
 
@@ -159,12 +161,47 @@ def build_agent(access_token: str, settings: Settings, user_timezone: str = "UTC
             return tool_error(error)
 
     @tool
-    async def update_calendar_event(event_id: str, changes: dict) -> str:
-        """Update a calendar event using a Microsoft Graph changes object."""
+    async def update_calendar_event(
+        event_id: str,
+        subject: str | None = None,
+        start: str | None = None,
+        end: str | None = None,
+        time_zone: str | None = None,
+        body: str | None = None,
+        location: str | None = None,
+    ) -> str:
+        """Update an existing event with explicit fields.
+
+        event_id must come from list_calendar_events. Start and end are ISO
+        date-time strings interpreted in the user's timezone unless they carry
+        an offset. Send only fields that should change.
+        """
+        changes: dict[str, object] = {}
+        if subject is not None:
+            changes["subject"] = subject
+        if start is not None or end is not None:
+            event_timezone = time_zone or user_timezone
+            try:
+                if start is not None:
+                    changes["start"] = {
+                        "dateTime": to_graph_utc(start, event_timezone),
+                        "timeZone": "UTC",
+                    }
+                if end is not None:
+                    changes["end"] = {
+                        "dateTime": to_graph_utc(end, event_timezone),
+                        "timeZone": "UTC",
+                    }
+            except (ValueError, ZoneInfoNotFoundError) as error:
+                return json.dumps({"error": f"Invalid calendar date-time: {error}"})
+        if body is not None:
+            changes["body"] = {"contentType": "Text", "content": body}
+        if location is not None:
+            changes["location"] = {"displayName": location}
+        if not changes:
+            return json.dumps({"error": "At least one event field must change."})
         try:
-            return json.dumps(
-                await calendar.update_event(access_token, event_id, changes)
-            )
+            return json.dumps(await calendar.update_event(access_token, event_id, changes))
         except Exception as error:
             return tool_error(error)
 
