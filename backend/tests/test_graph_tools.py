@@ -13,6 +13,7 @@ from app.services import graph_client
 from app.services.conversations import get_messages
 from app.services.graph_client import GraphAPIError
 from app.schemas.chat import ChatRequest
+from app.agent import to_graph_utc
 
 
 class FakeResponse:
@@ -46,6 +47,25 @@ class FakeAsyncClient:
 
 async def run(coroutine):
     return await coroutine
+
+
+def test_chat_request_validates_browser_timezone():
+    request = ChatRequest(message="What is on my calendar?", timezone="America/New_York")
+    assert request.timezone == "America/New_York"
+
+    try:
+        ChatRequest(message="What is on my calendar?", timezone="not/a-timezone")
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("Expected an invalid timezone to be rejected")
+
+
+def test_calendar_local_time_converts_to_utc_across_dst():
+    # March 8, 2026 is after the US DST transition: New York is UTC-4.
+    assert to_graph_utc("2026-03-08T10:00:00", "America/New_York") == (
+        "2026-03-08T14:00:00"
+    )
 
 
 def test_graph_client_sends_bearer_token_and_selects_data(monkeypatch):

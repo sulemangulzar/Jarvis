@@ -65,6 +65,7 @@ export async function logout() {
 }
 
 export async function sendChatMessage(message, conversationId = null) {
+  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
   const response = await fetchWithTimeout(
     `${API_BASE_URL}/chat`,
     {
@@ -77,6 +78,7 @@ export async function sendChatMessage(message, conversationId = null) {
       body: JSON.stringify({
         message,
         conversation_id: conversationId,
+        timezone,
       }),
     },
     60_000,

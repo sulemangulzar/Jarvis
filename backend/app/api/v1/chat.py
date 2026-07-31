@@ -69,7 +69,7 @@ async def chat(
     history.append(HumanMessage(content=data.message))
 
     try:
-        agent = build_agent(access_token, settings)
+        agent = build_agent(access_token, settings, data.timezone)
         result = await agent.ainvoke({"messages": history})
     except ValueError as error:
         raise HTTPException(status_code=503, detail=str(error)) from error

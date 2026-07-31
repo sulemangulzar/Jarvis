@@ -1,6 +1,7 @@
 import json
 from datetime import UTC, datetime
 from typing import Any, cast
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from langchain_core.messages import SystemMessage
 from pydantic import SecretStr
@@ -13,6 +14,14 @@ from app.core.config import Settings
 from app.services import calendar, emails, todos
 from app.services.graph_client import GraphAPIError
 
+def to_graph_utc(value: str, timezone_name: str) -> str:
+    """Convert an ISO local/offset datetime to Graph's UTC date-time format."""
+    parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=ZoneInfo(timezone_name))
+    return parsed.astimezone(UTC).replace(tzinfo=None).isoformat(timespec="seconds")
+
+
 SYSTEM_PROMPT = """
 You are Jarvis, a helpful personal assistant connected to the user's Microsoft account.
 Use the available tools when the user asks about email, calendar, or Microsoft To-Do.
@@ -20,16 +29,23 @@ Use the available tools when the user asks about email, calendar, or Microsoft T
 Important email rule: you may read emails and create drafts, but you must never send email.
 There is no send-email tool. Tell the user that drafts must be reviewed and sent by them.
 
-For calendar and To-Do changes, use the tools and clearly summarize what changed.
-Do not claim an action succeeded unless the tool returned successfully.
+Execution rule:
+- When the user clearly asks you to create, update, or delete a calendar event or To-Do task, execute the tool immediately.
+- Do not ask for confirmation before each action and do not repeatedly ask for confirmation.
+- Ask a question only when a required detail is genuinely missing or ambiguous (for example, no meeting time).
+- After a successful tool call, clearly summarize what changed. Never claim success unless the tool returned successfully.
+
 If a tool returns an error, explain the safe error and suggest the relevant next step.
 For permission errors, tell the user to sign out, sign in again, and grant the requested Microsoft permission.
 
-Calendar date rules:
-- Today is {today} in UTC.
-- Calculate relative dates such as tomorrow from today's date.
-- Never invent a month or date. If the user's date or timezone is ambiguous, ask a clarifying question before creating or updating an event.
-- Use ISO date-time strings for calendar tools.
+Calendar date and time rules:
+- The user's IANA timezone is {timezone}.
+- The current local date and time is {current_datetime}.
+- Today is {today} in the user's timezone, not the server's timezone.
+- Calculate relative dates such as tomorrow from today's local date.
+- Interpret a time without a timezone in the user's timezone.
+- Never invent a month, date, duration, or timezone. If a required date, time, duration, or timezone is ambiguous, ask one concise clarifying question before creating or updating an event.
+- Use ISO date-time strings for calendar tools. The calendar tool converts local times safely for Microsoft Graph.
 """
 
 
@@ -45,8 +61,11 @@ def tool_error(error: Exception) -> str:
     return json.dumps({"error": "The requested Microsoft operation could not be completed."})
 
 
-def build_agent(access_token: str, settings: Settings):
-    """Build a small LangGraph agent whose tools already have the user's token."""
+def build_agent(access_token: str, settings: Settings, user_timezone: str = "UTC"):
+    """Build a LangGraph agent with the user's token and local timezone context."""
+    # ZoneInfo raises immediately for an invalid value; API validation normally
+    # catches this, while this guard also protects other callers of build_agent.
+    local_zone = ZoneInfo(user_timezone)
     if not settings.openai_api_key:
         raise ValueError("OPENAI_API_KEY is not configured")
 
@@ -97,20 +116,43 @@ def build_agent(access_token: str, settings: Settings):
         subject: str,
         start: str,
         end: str,
-        time_zone: str = "UTC",
+        time_zone: str | None = None,
         body: str = "",
         location: str = "",
+        attendees: list[str] | None = None,
     ) -> str:
-        """Create a calendar event. Start and end should be ISO date-time strings."""
-        event = {
+        """Create a calendar event and invite attendees by email address.
+
+        Start and end should be ISO date-time strings. If the user names an
+        attendee without an email address, ask for the address before calling
+        this tool because Graph cannot reliably resolve arbitrary names.
+        """
+        event_timezone = time_zone or user_timezone
+        try:
+            # Graph reliably accepts UTC/Windows-compatible timestamps. Convert
+            # IANA browser times here so DST and server timezone never matter.
+            graph_start = to_graph_utc(start, event_timezone)
+            graph_end = to_graph_utc(end, event_timezone)
+        except (ValueError, ZoneInfoNotFoundError) as error:
+            return json.dumps({"error": f"Invalid calendar date-time: {error}"})
+        event: dict[str, object] = {
             "subject": subject,
-            "start": {"dateTime": start, "timeZone": time_zone},
-            "end": {"dateTime": end, "timeZone": time_zone},
+            "start": {"dateTime": graph_start, "timeZone": "UTC"},
+            "end": {"dateTime": graph_end, "timeZone": "UTC"},
         }
         if body:
             event["body"] = {"contentType": "Text", "content": body}
         if location:
             event["location"] = {"displayName": location}
+        if attendees:
+            event["attendees"] = [
+                {
+                    "emailAddress": {"address": address.strip()},
+                    "type": "required",
+                }
+                for address in attendees
+                if address.strip()
+            ]
         try:
             return json.dumps(await calendar.create_event(access_token, event))
         except Exception as error:
@@ -196,10 +238,16 @@ def build_agent(access_token: str, settings: Settings):
     ).bind_tools(tools)
 
     async def call_model(state: MessagesState):
-        today = datetime.now(UTC).date().isoformat()
+        now_local = datetime.now(local_zone)
         response = await model.ainvoke(
             [
-                SystemMessage(content=SYSTEM_PROMPT.format(today=today)),
+                SystemMessage(
+                    content=SYSTEM_PROMPT.format(
+                        timezone=user_timezone,
+                        current_datetime=now_local.isoformat(),
+                        today=now_local.date().isoformat(),
+                    )
+                ),
                 *state["messages"],
             ]
         )

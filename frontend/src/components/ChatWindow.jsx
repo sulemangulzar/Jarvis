@@ -254,8 +254,15 @@ export default function ChatWindow({ suggestions = [] }) {
     }
   }
 
+  function handleInputKeyDown(event) {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      event.currentTarget.form?.requestSubmit();
+    }
+  }
+
   return (
-    <section className="flex min-h-[560px] flex-1 flex-col rounded-2xl border border-slate-200 bg-white shadow-card dark:border-cyan-400/15 dark:bg-[#0b1728] dark:shadow-[0_0_45px_rgba(34,211,238,0.08)] xl:h-full">
+    <section className="flex min-h-[560px] flex-1 flex-col rounded-2xl border border-slate-200 bg-white shadow-card dark:border-cyan-400/15 dark:bg-[#0b1728] dark:shadow-[0_0_45px_rgba(34,211,235,0.08)] xl:h-full">
       <div className="border-b border-slate-100 px-5 py-4 dark:border-cyan-400/10 sm:px-6">
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-electric">
           Jarvis assistant
@@ -321,14 +328,15 @@ export default function ChatWindow({ suggestions = [] }) {
           Message Jarvis
         </label>
         <div className="flex gap-2">
-          <input
+          <textarea
             id="chat-message"
-            type="text"
+            rows="1"
             value={message}
             onChange={(event) => setMessage(event.target.value)}
+            onKeyDown={handleInputKeyDown}
             placeholder="Ask about your calendar, email, or tasks..."
             disabled={isSending}
-            className="min-w-0 flex-1 rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-electric focus:ring-4 focus:ring-blue-100 disabled:bg-slate-50 dark:border-cyan-400/15 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-cyan-300 dark:focus:ring-cyan-400/10 dark:disabled:bg-slate-950"
+            className="min-h-[48px] min-w-0 flex-1 resize-y rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-electric focus:ring-4 focus:ring-blue-100 disabled:bg-slate-50 dark:border-cyan-400/15 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-cyan-300 dark:focus:ring-cyan-400/10 dark:disabled:bg-slate-950"
           />
           <button
             type="submit"
