@@ -193,7 +193,7 @@ function Message({ role, content }) {
   const isUser = role === "user";
 
   return (
-    <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
+    <div className={`animate-message-in flex ${isUser ? "justify-end" : "justify-start"}`}>
       <div
         className={`max-w-[92%] rounded-2xl px-4 py-3 text-sm leading-6 ${
           isUser
@@ -286,7 +286,14 @@ export default function ChatWindow({ suggestions = [] }) {
               className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-slate-300 border-t-electric"
               aria-hidden="true"
             />
-            Jarvis is thinking...
+            <span className="inline-flex items-center gap-1">
+              Jarvis is thinking
+              <span className="flex gap-0.5" aria-hidden="true">
+                <span className="animate-dot-bounce h-1.5 w-1.5 rounded-full bg-electric" />
+                <span className="animate-dot-bounce h-1.5 w-1.5 rounded-full bg-electric [animation-delay:150ms]" />
+                <span className="animate-dot-bounce h-1.5 w-1.5 rounded-full bg-electric [animation-delay:300ms]" />
+              </span>
+            </span>
           </div>
         )}
       </div>
@@ -322,7 +329,7 @@ export default function ChatWindow({ suggestions = [] }) {
 
       <form
         onSubmit={handleSubmit}
-        className="border-t border-slate-100 p-4 dark:border-cyan-400/10 sm:p-5"
+        className="animate-glow-pulse border-t border-slate-100 p-4 dark:border-cyan-400/10 sm:p-5"
       >
         <label htmlFor="chat-message" className="sr-only">
           Message Jarvis

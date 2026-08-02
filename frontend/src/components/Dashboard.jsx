@@ -71,11 +71,13 @@ export default function Dashboard({ user, onLogout, isLoggingOut }) {
   }, [darkMode]);
 
   return (
-    <div className="min-h-screen bg-mist text-ink transition-colors dark:bg-[#030712] dark:text-slate-100 lg:flex lg:h-screen lg:overflow-hidden">
-      <Sidebar />
+    <div className="animate-page-enter min-h-screen bg-mist text-ink transition-colors dark:bg-[#030712] dark:text-slate-100 lg:flex lg:h-screen lg:overflow-hidden">
+      <div className="animate-page-enter animate-delay-100">
+        <Sidebar />
+      </div>
 
       <main className="min-w-0 flex-1 lg:h-screen">
-        <header className="border-b border-slate-200 bg-white px-5 py-5 dark:border-cyan-400/10 dark:bg-[#07111f] sm:px-8">
+        <header className="animate-page-enter animate-delay-100 border-b border-slate-200 bg-white px-5 py-5 dark:border-cyan-400/10 dark:bg-[#07111f] sm:px-8">
           <div className="mx-auto flex max-w-[1500px] items-center justify-between gap-4">
             <div>
               <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Personal workspace</p>
@@ -102,17 +104,17 @@ export default function Dashboard({ user, onLogout, isLoggingOut }) {
 
         <div className="mx-auto flex max-w-[1500px] flex-col gap-6 p-4 pb-6 sm:p-6 lg:h-[calc(100vh-89px)] lg:overflow-hidden lg:p-8 lg:pb-10">
           <section className="grid shrink-0 gap-4 sm:grid-cols-3">
-            <div className="rounded-2xl border border-blue-100 bg-blue-50 p-5 dark:border-cyan-300/20 dark:bg-cyan-400/10 dark:shadow-[0_0_28px_rgba(34,211,238,0.08)]">
+            <div className="animate-page-enter animate-delay-100 rounded-2xl border border-blue-100 bg-blue-50 p-5 transition duration-300 hover:-translate-y-1 hover:shadow-lg dark:border-cyan-300/20 dark:bg-cyan-400/10 dark:shadow-[0_0_28px_rgba(34,211,238,0.08)]">
               <p className="text-sm font-medium text-blue-700 dark:text-cyan-300">Assistant</p>
               <p className="mt-2 text-lg font-bold text-ink dark:text-white">Ready to help</p>
               <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">Ask Jarvis anything</p>
             </div>
-            <div className="rounded-2xl border border-violet-100 bg-violet-50 p-5 dark:border-violet-400/20 dark:bg-violet-400/10 dark:shadow-[0_0_28px_rgba(167,139,250,0.08)]">
+            <div className="animate-page-enter animate-delay-200 rounded-2xl border border-violet-100 bg-violet-50 p-5 transition duration-300 hover:-translate-y-1 hover:shadow-lg dark:border-violet-400/20 dark:bg-violet-400/10 dark:shadow-[0_0_28px_rgba(167,139,250,0.08)]">
               <p className="text-sm font-medium text-violet-700 dark:text-violet-300">Calendar</p>
               <p className="mt-2 text-lg font-bold text-ink dark:text-white">Stay organized</p>
               <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">View or create events</p>
             </div>
-            <div className="rounded-2xl border border-amber-100 bg-amber-50 p-5 dark:border-amber-300/20 dark:bg-amber-400/10 dark:shadow-[0_0_28px_rgba(251,191,36,0.08)]">
+            <div className="animate-page-enter animate-delay-300 rounded-2xl border border-amber-100 bg-amber-50 p-5 transition duration-300 hover:-translate-y-1 hover:shadow-lg dark:border-amber-300/20 dark:bg-amber-400/10 dark:shadow-[0_0_28px_rgba(251,191,36,0.08)]">
               <p className="text-sm font-medium text-amber-700 dark:text-amber-300">To-Do</p>
               <p className="mt-2 text-lg font-bold text-ink dark:text-white">Keep moving</p>
               <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">Manage your tasks</p>
